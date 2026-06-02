@@ -1,0 +1,80 @@
+# Optional: rename to terraform-multi.yml when using Azure + GCP.
+# Requires secrets: AWS_*, TF_STATE_*, AZURE_CREDENTIALS (JSON), GCP_SA_KEY (JSON)
+#
+# Also commit in repo:
+#   multi_cloud.tf (from multi_cloud.tf.example)
+#   providers.azure_gcp.tf (from providers.azure_gcp.tf.example)
+#   terraform.tfvars (from terraform.tfvars.example, or use GitHub Environment vars)
+
+name: Terraform Multi-Cloud
+
+on:
+  workflow_dispatch:
+    inputs:
+      terraform_action:
+        description: "plan or apply"
+        required: true
+        default: plan
+        type: choice
+        options:
+          - plan
+          - apply
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  TF_VERSION: "1.14.8"
+  AWS_REGION: us-east-1
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: GCP auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - run: terraform fmt -check -recursive
+
+      - name: Terraform init
+        run: |
+          terraform init \
+            -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" \
+            -backend-config="key=${{ secrets.TF_STATE_KEY }}" \
+            -backend-config="region=${{ secrets.TF_STATE_REGION }}" \
+            -backend-config="dynamodb_table=${{ secrets.TF_STATE_DYNAMODB_TABLE }}" \
+            -backend-config="encrypt=true"
+
+      - run: terraform validate
+
+      - name: Plan
+        if: inputs.terraform_action == 'plan'
+        run: terraform plan -input=false
+
+      - name: Apply
+        if: inputs.terraform_action == 'apply'
+        run: terraform apply -auto-approve -input=false

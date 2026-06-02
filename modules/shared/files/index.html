@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Calculator</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+        background: linear-gradient(145deg, #0b1220 0%, #162447 100%);
+        color: #e6eefc;
+      }
+      .calculator {
+        width: min(100%, 320px);
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 20px;
+        padding: 20px;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+      }
+      h1 {
+        margin: 0 0 16px;
+        font-size: 1.1rem;
+        font-weight: 600;
+        text-align: center;
+        opacity: 0.9;
+      }
+      .display {
+        width: 100%;
+        padding: 16px;
+        margin-bottom: 16px;
+        border: none;
+        border-radius: 12px;
+        background: rgba(0, 0, 0, 0.35);
+        color: #fff;
+        font-size: 2rem;
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+      }
+      .keys {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+      }
+      button {
+        border: none;
+        border-radius: 12px;
+        padding: 16px 0;
+        font-size: 1.15rem;
+        font-weight: 600;
+        cursor: pointer;
+        background: rgba(255, 255, 255, 0.1);
+        color: #e6eefc;
+        transition: background 0.15s, transform 0.05s;
+      }
+      button:hover { background: rgba(255, 255, 255, 0.18); }
+      button:active { transform: scale(0.97); }
+      button.op { background: rgba(99, 140, 255, 0.35); }
+      button.op:hover { background: rgba(99, 140, 255, 0.5); }
+      button.equals {
+        grid-column: span 2;
+        background: #3d7eff;
+        color: #fff;
+      }
+      button.equals:hover { background: #5b93ff; }
+      button.clear {
+        background: rgba(255, 107, 107, 0.35);
+      }
+      button.clear:hover { background: rgba(255, 107, 107, 0.5); }
+      .footer {
+        margin-top: 14px;
+        text-align: center;
+        font-size: 0.75rem;
+        opacity: 0.55;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="calculator">
+      <h1>Calculator</h1>
+      <input class="display" id="display" type="text" readonly value="0" aria-label="Result" />
+      <div class="keys">
+        <button type="button" class="clear" data-action="clear">C</button>
+        <button type="button" data-action="back">⌫</button>
+        <button type="button" class="op" data-op="/">÷</button>
+        <button type="button" class="op" data-op="*">×</button>
+
+        <button type="button" data-digit="7">7</button>
+        <button type="button" data-digit="8">8</button>
+        <button type="button" data-digit="9">9</button>
+        <button type="button" class="op" data-op="-">−</button>
+
+        <button type="button" data-digit="4">4</button>
+        <button type="button" data-digit="5">5</button>
+        <button type="button" data-digit="6">6</button>
+        <button type="button" class="op" data-op="+">+</button>
+
+        <button type="button" data-digit="1">1</button>
+        <button type="button" data-digit="2">2</button>
+        <button type="button" data-digit="3">3</button>
+        <button type="button" data-digit="0">0</button>
+
+        <button type="button" data-digit=".">.</button>
+        <button type="button" class="equals" data-action="equals">=</button>
+      </div>
+      <p class="footer">Static calculator · EC2 + Node</p>
+    </div>
+    <script>
+      const display = document.getElementById("display");
+      let current = "0";
+      let previous = null;
+      let operator = null;
+      let resetOnNext = false;
+
+      function updateDisplay() {
+        display.value = current;
+      }
+
+      function inputDigit(d) {
+        if (resetOnNext) {
+          current = d === "." ? "0." : d;
+          resetOnNext = false;
+          updateDisplay();
+          return;
+        }
+        if (d === "." && current.includes(".")) return;
+        if (current === "0" && d !== ".") current = d;
+        else current += d;
+        updateDisplay();
+      }
+
+      function setOperator(op) {
+        if (operator && !resetOnNext) calculate();
+        previous = parseFloat(current);
+        operator = op;
+        resetOnNext = true;
+      }
+
+      function calculate() {
+        if (operator == null || previous == null) return;
+        const a = previous;
+        const b = parseFloat(current);
+        let result;
+        switch (operator) {
+          case "+": result = a + b; break;
+          case "-": result = a - b; break;
+          case "*": result = a * b; break;
+          case "/":
+            result = b === 0 ? "Error" : a / b;
+            break;
+          default: return;
+        }
+        if (result === "Error") current = "Error";
+        else {
+          current = String(Math.round(result * 1e10) / 1e10);
+        }
+        operator = null;
+        previous = null;
+        resetOnNext = true;
+        updateDisplay();
+      }
+
+      function clearAll() {
+        current = "0";
+        previous = null;
+        operator = null;
+        resetOnNext = false;
+        updateDisplay();
+      }
+
+      function backspace() {
+        if (current === "Error") {
+          clearAll();
+          return;
+        }
+        if (current.length <= 1) current = "0";
+        else current = current.slice(0, -1);
+        updateDisplay();
+      }
+
+      document.querySelector(".keys").addEventListener("click", (e) => {
+        const btn = e.target.closest("button");
+        if (!btn) return;
+        if (btn.dataset.digit != null) inputDigit(btn.dataset.digit);
+        else if (btn.dataset.op) setOperator(btn.dataset.op);
+        else if (btn.dataset.action === "equals") calculate();
+        else if (btn.dataset.action === "clear") clearAll();
+        else if (btn.dataset.action === "back") backspace();
+      });
+
+      document.addEventListener("keydown", (e) => {
+        if (e.key >= "0" && e.key <= "9") inputDigit(e.key);
+        else if (e.key === ".") inputDigit(".");
+        else if (e.key === "+" || e.key === "-" || e.key === "*" || e.key === "/") setOperator(e.key);
+        else if (e.key === "Enter" || e.key === "=") { e.preventDefault(); calculate(); }
+        else if (e.key === "Escape") clearAll();
+        else if (e.key === "Backspace") { e.preventDefault(); backspace(); }
+      });
+    </script>
+  </body>
+</html>

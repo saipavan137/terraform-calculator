@@ -1,0 +1,9 @@
+.terraform/
+*.tfstate
+*.tfstate.*
+tfplan
+plan.txt
+providers.azure_gcp.tf
+multi_cloud.tf
+terraform.tfvars
+backend.hcl

@@ -1,0 +1,15 @@
+# Copy this file to providers.azure_gcp.tf when you are ready for Azure + GCP.
+#   copy providers.azure_gcp.tf.example providers.azure_gcp.tf
+#
+# Then set enable_azure / enable_gcp in terraform.tfvars and configure credentials below.
+
+provider "azurerm" {
+  features {}
+  # Uses `az login` by default. Or set subscription_id / client_id / client_secret.
+}
+
+provider "google" {
+  project = var.gcp_project_id
+  region  = var.gcp_region
+  # Uses Application Default Credentials from: gcloud auth application-default login
+}
