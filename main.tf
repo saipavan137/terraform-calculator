@@ -17,4 +17,5 @@ module "aws_app" {
   instance_type = var.aws_instance_type
   app_port      = var.app_port
   instance_name = var.aws_instance_name
+  subnet_id     = var.aws_subnet_id
 }

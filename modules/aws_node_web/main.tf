@@ -2,6 +2,17 @@ locals {
   shared_files = "${path.module}/../shared/files"
 }
 
+data "aws_vpc" "default" {
+  default = true
+}
+
+data "aws_subnets" "default" {
+  filter {
+    name   = "vpc-id"
+    values = [data.aws_vpc.default.id]
+  }
+}
+
 resource "aws_security_group" "web" {
   name        = var.security_group_name
   description = "Allow HTTP and SSH"
@@ -31,8 +42,10 @@ resource "aws_security_group" "web" {
 }
 
 resource "aws_instance" "this" {
-  ami           = var.ami
-  instance_type = var.instance_type
+  ami                         = var.ami
+  instance_type               = var.instance_type
+  subnet_id                   = coalesce(var.subnet_id, data.aws_subnets.default.ids[0])
+  associate_public_ip_address = true
 
   vpc_security_group_ids      = [aws_security_group.web.id]
   user_data_replace_on_change = var.user_data_replace_on_change

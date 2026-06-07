@@ -27,6 +27,13 @@ variable "security_group_name" {
   default     = "tf-basic-node-web"
 }
 
+variable "subnet_id" {
+  description = "Subnet for the EC2 instance. Defaults to the first subnet in the default VPC."
+  type        = string
+  default     = null
+  nullable    = true
+}
+
 variable "http_cidr_blocks" {
   description = "CIDR blocks allowed to reach the app port."
   type        = list(string)

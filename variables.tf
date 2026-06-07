@@ -50,6 +50,13 @@ variable "aws_instance_name" {
   default     = "Terraform-EC2"
 }
 
+variable "aws_subnet_id" {
+  description = "Optional subnet ID. Leave null to use the first subnet in the default VPC."
+  type        = string
+  default     = null
+  nullable    = true
+}
+
 # ── Azure ───────────────────────────────────────────────────────────────────
 
 variable "azure_subscription_id" {
