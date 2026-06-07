@@ -6,7 +6,7 @@
 |--------|--------|
 | **Pull request** | `fmt` check → `init` → `validate` → **plan** (no apply) |
 | **Push to `main`** | Same as above, then **apply** (uses saved plan) |
-| **Manual** (Actions tab) | Choose **plan**, **apply**, or **destroy**; toggle **Enable AWS** / **Enable Azure** |
+| **Manual** (Actions tab) | Choose **plan**, **apply**, or **destroy**; pick **clouds**: `aws`, `azure`, or **`both`** (default) |
 
 Workflow file: `.github/workflows/terraform.yml`
 
@@ -49,6 +49,20 @@ Repo → **Settings** → **Secrets and variables** → **Actions** → **New re
 | `TF_STATE_DYNAMODB_TABLE` | `terraform-locks` | Optional |
 | `AZURE_CREDENTIALS` | JSON from `az ad sp create-for-rbac --sdk-auth` | When deploying Azure |
 | `AZURE_ADMIN_PASSWORD` | Strong VM admin password | When deploying Azure |
+| `AZURE_SUBSCRIPTION_ID` | Your subscription GUID | When deploying Azure |
+
+Optional repo **Variable** (Settings → Actions → Variables):
+
+| Variable | Value | Purpose |
+|----------|-------|---------|
+| `ENABLE_AZURE` | `true` | Also deploy Azure on **push to main** (default: AWS only) |
+
+### Deploy AWS + Azure from GitHub
+
+1. Add all secrets above (AWS + Azure + S3 state).
+2. Actions → **Terraform** → **Run workflow**.
+3. **clouds** = **`both`**, **terraform_action** = **`apply`**.
+4. Check the **Outputs** step for `calculator_urls`.
 
 IAM user needs at least: EC2, VPC/security groups, and S3 state bucket access.
 

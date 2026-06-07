@@ -19,20 +19,21 @@ on:
       terraform_action:
         description: "plan, apply, or destroy"
         required: true
-        default: plan
+        default: apply
         type: choice
         options:
           - plan
           - apply
           - destroy
-      enable_aws:
-        description: "Deploy AWS (EC2)"
-        type: boolean
-        default: true
-      enable_azure:
-        description: "Deploy Azure (Linux VM)"
-        type: boolean
-        default: false
+      clouds:
+        description: "Which clouds to include"
+        required: true
+        default: both
+        type: choice
+        options:
+          - aws
+          - azure
+          - both
 
 permissions:
   contents: read
@@ -42,14 +43,17 @@ env:
   TF_VERSION: "1.14.8"
   AWS_REGION: us-east-1
   TF_VAR_azure_admin_password: ${{ secrets.AZURE_ADMIN_PASSWORD }}
+  TF_VAR_azure_location: westus2
+  TF_VAR_azure_vm_size: Standard_D2s_v3
+  TF_VAR_azure_subscription_id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
 jobs:
   plan:
     name: Plan
     runs-on: ubuntu-latest
     env:
-      TF_VAR_enable_aws: ${{ (github.event_name != 'workflow_dispatch' || inputs.enable_aws) && 'true' || 'false' }}
-      TF_VAR_enable_azure: ${{ (github.event_name == 'workflow_dispatch' && inputs.enable_azure) && 'true' || 'false' }}
+      TF_VAR_enable_aws: ${{ (github.event_name == 'workflow_dispatch' && (inputs.clouds == 'aws' || inputs.clouds == 'both')) && 'true' || (github.event_name != 'workflow_dispatch') && 'true' || 'false' }}
+      TF_VAR_enable_azure: ${{ (github.event_name == 'workflow_dispatch' && (inputs.clouds == 'azure' || inputs.clouds == 'both')) && 'true' || (github.event_name != 'workflow_dispatch' && vars.ENABLE_AZURE == 'true') && 'true' || 'false' }}
 
     steps:
       - name: Checkout
@@ -74,6 +78,11 @@ jobs:
         uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Show cloud toggles
+        run: |
+          echo "enable_aws=$TF_VAR_enable_aws enable_azure=$TF_VAR_enable_azure"
+          echo "azure_location=$TF_VAR_azure_location azure_vm_size=$TF_VAR_azure_vm_size"
 
       - name: Terraform format check
         run: terraform fmt -check -recursive
@@ -126,8 +135,8 @@ jobs:
       (github.event_name == 'workflow_dispatch' && inputs.terraform_action == 'apply')
     environment: production
     env:
-      TF_VAR_enable_aws: ${{ (github.event_name != 'workflow_dispatch' || inputs.enable_aws) && 'true' || 'false' }}
-      TF_VAR_enable_azure: ${{ (github.event_name == 'workflow_dispatch' && inputs.enable_azure) && 'true' || 'false' }}
+      TF_VAR_enable_aws: ${{ (github.event_name == 'workflow_dispatch' && (inputs.clouds == 'aws' || inputs.clouds == 'both')) && 'true' || (github.event_name != 'workflow_dispatch') && 'true' || 'false' }}
+      TF_VAR_enable_azure: ${{ (github.event_name == 'workflow_dispatch' && (inputs.clouds == 'azure' || inputs.clouds == 'both')) && 'true' || (github.event_name != 'workflow_dispatch' && vars.ENABLE_AZURE == 'true') && 'true' || 'false' }}
 
     steps:
       - name: Checkout
@@ -192,8 +201,8 @@ jobs:
     if: github.event_name == 'workflow_dispatch' && inputs.terraform_action == 'destroy'
     environment: production
     env:
-      TF_VAR_enable_aws: ${{ inputs.enable_aws && 'true' || 'false' }}
-      TF_VAR_enable_azure: ${{ inputs.enable_azure && 'true' || 'false' }}
+      TF_VAR_enable_aws: ${{ (inputs.clouds == 'aws' || inputs.clouds == 'both') && 'true' || 'false' }}
+      TF_VAR_enable_azure: ${{ (inputs.clouds == 'azure' || inputs.clouds == 'both') && 'true' || 'false' }}
 
     steps:
       - name: Checkout

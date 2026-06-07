@@ -87,7 +87,7 @@ variable "azure_client_secret" {
 variable "azure_location" {
   description = "Azure region."
   type        = string
-  default     = "eastus"
+  default     = "westus2"
 }
 
 variable "azure_name_prefix" {
@@ -99,7 +99,7 @@ variable "azure_name_prefix" {
 variable "azure_vm_size" {
   description = "Azure VM size."
   type        = string
-  default     = "Standard_B1ms"
+  default     = "Standard_D2s_v3"
 }
 
 variable "azure_admin_password" {
