@@ -17,13 +17,14 @@ on:
   workflow_dispatch:
     inputs:
       terraform_action:
-        description: "plan or apply"
+        description: "plan, apply, or destroy"
         required: true
         default: plan
         type: choice
         options:
           - plan
           - apply
+          - destroy
 
 permissions:
   contents: read
@@ -83,7 +84,12 @@ jobs:
         run: terraform validate
 
       - name: Terraform plan
-        run: terraform plan -no-color -input=false -out=tfplan
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.terraform_action }}" = "destroy" ]; then
+            terraform plan -destroy -no-color -input=false -out=tfplan
+          else
+            terraform plan -no-color -input=false -out=tfplan
+          fi
 
       - name: Upload plan
         uses: actions/upload-artifact@v4
@@ -149,3 +155,59 @@ jobs:
 
       - name: Outputs
         run: terraform output
+
+  destroy:
+    name: Destroy
+    needs: plan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && inputs.terraform_action == 'destroy'
+    environment: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Terraform init
+        env:
+          TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
+          TF_STATE_KEY: ${{ secrets.TF_STATE_KEY }}
+          TF_STATE_REGION: ${{ secrets.TF_STATE_REGION }}
+          TF_STATE_DYNAMODB_TABLE: ${{ secrets.TF_STATE_DYNAMODB_TABLE }}
+        run: |
+          if [ -z "$TF_STATE_BUCKET" ]; then
+            echo "::error::Set TF_STATE_BUCKET (and related secrets) before running destroy in CI."
+            exit 1
+          fi
+          ARGS="-backend-config=bucket=$TF_STATE_BUCKET"
+          ARGS="$ARGS -backend-config=key=${TF_STATE_KEY:-terraform-basic-project/terraform.tfstate}"
+          ARGS="$ARGS -backend-config=region=${TF_STATE_REGION:-us-east-1}"
+          ARGS="$ARGS -backend-config=encrypt=true"
+          if [ -n "$TF_STATE_DYNAMODB_TABLE" ]; then
+            ARGS="$ARGS -backend-config=dynamodb_table=$TF_STATE_DYNAMODB_TABLE"
+          fi
+          terraform init $ARGS
+
+      - name: Download destroy plan
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan-${{ github.sha }}
+          path: .
+
+      - name: Terraform destroy
+        run: terraform apply -auto-approve -input=false tfplan
+
+      - name: Verify empty state
+        run: terraform state list

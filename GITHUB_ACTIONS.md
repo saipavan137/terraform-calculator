@@ -6,7 +6,7 @@
 |--------|--------|
 | **Pull request** | `fmt` check → `init` → `validate` → **plan** (no apply) |
 | **Push to `main`** | Same as above, then **apply** (uses saved plan) |
-| **Manual** (Actions tab) | Choose **plan** or **apply** |
+| **Manual** (Actions tab) | Choose **plan**, **apply**, or **destroy** |
 
 Workflow file: `.github/workflows/terraform.yml`
 
@@ -59,7 +59,17 @@ Settings → **Branches** → **Add rule** on `main`:
 
 Settings → **Environments** → **production** → **Required reviewers**
 
-The workflow uses the `production` environment when applying on `main`.
+The workflow uses the `production` environment when applying on `main` or destroying manually.
+
+### Destroy from GitHub (manual only)
+
+1. Actions → **Terraform** → **Run workflow**
+2. Branch: `main`, action: **destroy**
+3. Review the **Plan** job (shows resources to remove)
+4. Approve **Destroy** if `production` environment requires reviewers
+5. **Verify empty state** step should print nothing (no resources left)
+
+Destroy never runs on push — only when you choose it manually.
 
 ---
 
