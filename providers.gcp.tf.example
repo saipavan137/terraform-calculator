@@ -1,8 +1,0 @@
-# Copy to providers.gcp.tf when you enable GCP (multi_cloud.tf).
-#   copy providers.gcp.tf.example providers.gcp.tf
-
-provider "google" {
-  project = var.gcp_project_id
-  region  = var.gcp_region
-  # Uses Application Default Credentials from: gcloud auth application-default login
-}

@@ -12,12 +12,6 @@ variable "enable_azure" {
   default     = false
 }
 
-variable "enable_gcp" {
-  description = "Deploy calculator on GCP Compute Engine."
-  type        = bool
-  default     = false
-}
-
 variable "app_port" {
   description = "HTTP port for the calculator (all clouds)."
   type        = number
@@ -107,42 +101,4 @@ variable "azure_admin_password" {
   type        = string
   sensitive   = true
   default     = "TerraformCalc-Demo2024!"
-}
-
-# ── GCP ─────────────────────────────────────────────────────────────────────
-
-variable "gcp_project_id" {
-  description = "GCP project ID (required when enable_gcp = true)."
-  type        = string
-  default     = ""
-}
-
-variable "gcp_region" {
-  description = "GCP region."
-  type        = string
-  default     = "us-central1"
-}
-
-variable "gcp_zone" {
-  description = "GCP zone for the VM."
-  type        = string
-  default     = "us-central1-a"
-}
-
-variable "gcp_name_prefix" {
-  description = "Prefix for GCP firewall rule names."
-  type        = string
-  default     = "tf-calc"
-}
-
-variable "gcp_machine_type" {
-  description = "GCP machine type."
-  type        = string
-  default     = "e2-micro"
-}
-
-variable "gcp_instance_name" {
-  description = "GCP compute instance name."
-  type        = string
-  default     = "tf-calc-vm"
 }

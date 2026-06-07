@@ -1,10 +1,8 @@
 .terraform/
+.terraform-local/
 *.tfstate
 *.tfstate.*
 tfplan
 plan.txt
-providers.azure_gcp.tf
-providers.gcp.tf
-multi_cloud.tf
 terraform.tfvars
 backend.hcl

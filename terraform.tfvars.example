@@ -4,7 +4,6 @@
 # Cloud toggles — turn on each provider you have credentials for:
 enable_aws   = true
 enable_azure = false
-enable_gcp   = false
 
 # Azure only example:
 # enable_aws   = false
@@ -13,8 +12,6 @@ enable_gcp   = false
 # AWS + Azure together:
 # enable_aws = true
 # enable_azure = true
-
-# GCP still requires multi_cloud.tf (copy from multi_cloud.tf.example)
 
 app_port = 80
 
@@ -25,11 +22,6 @@ aws_instance_type = "t2.micro"
 
 # Azure — configure: az login  (or AZURE_CREDENTIALS / ARM_* in CI)
 azure_subscription_id = "your-azure-subscription-id"
-azure_location        = "eastus"
+azure_location        = "westus2"
 azure_name_prefix     = "tf-calc"
 # azure_admin_password = "Change-Me-StrongPass1!"  # optional; has a default for demos
-
-# GCP — configure: gcloud auth application-default login
-gcp_project_id = "your-gcp-project-id"
-gcp_region     = "us-central1"
-gcp_zone       = "us-central1-a"
