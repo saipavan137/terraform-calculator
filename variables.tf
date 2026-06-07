@@ -99,7 +99,7 @@ variable "azure_name_prefix" {
 variable "azure_vm_size" {
   description = "Azure VM size."
   type        = string
-  default     = "Standard_B1s"
+  default     = "Standard_B1ms"
 }
 
 variable "azure_admin_password" {
