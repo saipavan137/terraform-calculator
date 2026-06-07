@@ -1,32 +1,17 @@
-# ── Multi-cloud extension (Azure + GCP) ─────────────────────────────────────
-# 1. Copy this file:  copy multi_cloud.tf.example multi_cloud.tf
-# 2. Copy providers: copy providers.azure_gcp.tf.example providers.azure_gcp.tf
-# 3. Run: terraform init -upgrade
-# 4. Set enable_azure / enable_gcp in terraform.tfvars and configure credentials
-# 5. Copy outputs from outputs.multi.tf.example into outputs.tf (or merge manually)
+# ── GCP extension (optional) ────────────────────────────────────────────────
+# Azure is wired in azure.tf. For GCP only:
+#   copy multi_cloud.tf.example multi_cloud.tf
+#   copy providers.gcp.tf.example providers.gcp.tf
+#   terraform init -upgrade
+#   set enable_gcp = true in terraform.tfvars
 
 terraform {
   required_providers {
-    azurerm = {
-      source  = "hashicorp/azurerm"
-      version = "~> 4.0"
-    }
     google = {
       source  = "hashicorp/google"
       version = "~> 6.0"
     }
   }
-}
-
-module "azure_app" {
-  count  = var.enable_azure ? 1 : 0
-  source = "./modules/azure_node_web"
-
-  location       = var.azure_location
-  name_prefix    = var.azure_name_prefix
-  vm_size        = var.azure_vm_size
-  app_port       = var.app_port
-  admin_password = var.azure_admin_password
 }
 
 module "gcp_app" {

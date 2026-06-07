@@ -1,14 +1,20 @@
 # Copy to terraform.tfvars and fill in your values:
 #   copy terraform.tfvars.example terraform.tfvars
 
-# AWS only (default):
+# Cloud toggles — turn on each provider you have credentials for:
 enable_aws   = true
 enable_azure = false
 enable_gcp   = false
 
-# For all 3 clouds: also copy multi_cloud.tf.example -> multi_cloud.tf
-# and providers.azure_gcp.tf.example -> providers.azure_gcp.tf, then set:
-# enable_aws = true, enable_azure = true, enable_gcp = true
+# Azure only example:
+# enable_aws   = false
+# enable_azure = true
+
+# AWS + Azure together:
+# enable_aws = true
+# enable_azure = true
+
+# GCP still requires multi_cloud.tf (copy from multi_cloud.tf.example)
 
 app_port = 80
 
@@ -17,10 +23,11 @@ aws_region        = "us-east-1"
 aws_ami           = "ami-05ffe3c48a9991133"
 aws_instance_type = "t2.micro"
 
-# Azure — configure: az login  (or set ARM_SUBSCRIPTION_ID, etc.)
+# Azure — configure: az login  (or AZURE_CREDENTIALS / ARM_* in CI)
 azure_subscription_id = "your-azure-subscription-id"
 azure_location        = "eastus"
 azure_name_prefix     = "tf-calc"
+# azure_admin_password = "Change-Me-StrongPass1!"  # optional; has a default for demos
 
 # GCP — configure: gcloud auth application-default login
 gcp_project_id = "your-gcp-project-id"

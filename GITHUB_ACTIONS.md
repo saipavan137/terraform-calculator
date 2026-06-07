@@ -6,9 +6,11 @@
 |--------|--------|
 | **Pull request** | `fmt` check → `init` → `validate` → **plan** (no apply) |
 | **Push to `main`** | Same as above, then **apply** (uses saved plan) |
-| **Manual** (Actions tab) | Choose **plan**, **apply**, or **destroy** |
+| **Manual** (Actions tab) | Choose **plan**, **apply**, or **destroy**; toggle **Enable AWS** / **Enable Azure** |
 
 Workflow file: `.github/workflows/terraform.yml`
+
+Azure setup: see **AZURE.md**
 
 ---
 
@@ -45,12 +47,12 @@ Repo → **Settings** → **Secrets and variables** → **Actions** → **New re
 | `TF_STATE_KEY` | `terraform-basic-project/terraform.tfstate` | Yes for apply |
 | `TF_STATE_REGION` | `us-east-1` | Yes for apply |
 | `TF_STATE_DYNAMODB_TABLE` | `terraform-locks` | Optional |
+| `AZURE_CREDENTIALS` | JSON from `az ad sp create-for-rbac --sdk-auth` | When deploying Azure |
+| `AZURE_ADMIN_PASSWORD` | Strong VM admin password | When deploying Azure |
 
 IAM user needs at least: EC2, VPC/security groups, and S3 state bucket access.
 
 ### 4. (Recommended) Protect `main` branch
-
-Settings → **Branches** → **Add rule** on `main`:
 
 - Require pull request before merging
 - Require status check: **Terraform**
@@ -83,14 +85,13 @@ Copy `backend.hcl.example` → `backend.hcl` and fill in your bucket name.
 
 ---
 
-## Multi-cloud (AWS + Azure + GCP)
+## GCP (optional)
+
+Azure is in `azure.tf`. For GCP only:
 
 1. Copy `multi_cloud.tf.example` → `multi_cloud.tf`
-2. Copy `providers.azure_gcp.tf.example` → `providers.azure_gcp.tf`
-3. Rename `.github/workflows/terraform-multi.yml.example` → `terraform-multi.yml`
-4. Add secrets: `AZURE_CREDENTIALS`, `GCP_SA_KEY`
-
-Run manually from the Actions tab (multi-cloud workflow).
+2. Copy `providers.gcp.tf.example` → `providers.gcp.tf`
+3. Set `enable_gcp = true` in `terraform.tfvars`
 
 ---
 
