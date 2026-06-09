@@ -28,12 +28,14 @@ on:
       clouds:
         description: "Which clouds to include"
         required: true
-        default: both
+        default: all
         type: choice
         options:
           - aws
           - azure
+          - gcp
           - both
+          - all
 
 permissions:
   contents: read
@@ -46,14 +48,19 @@ env:
   TF_VAR_azure_location: westus2
   TF_VAR_azure_vm_size: Standard_D2s_v3
   TF_VAR_azure_subscription_id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+  TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT_ID }}
+  TF_VAR_gcp_region: us-central1
+  TF_VAR_gcp_zone: us-central1-a
+  TF_VAR_gcp_machine_type: e2-micro
 
 jobs:
   plan:
     name: Plan
     runs-on: ubuntu-latest
     env:
-      TF_VAR_enable_aws: ${{ (github.event_name == 'workflow_dispatch' && (inputs.clouds == 'aws' || inputs.clouds == 'both')) && 'true' || (github.event_name != 'workflow_dispatch') && 'true' || 'false' }}
-      TF_VAR_enable_azure: ${{ (github.event_name == 'workflow_dispatch' && (inputs.clouds == 'azure' || inputs.clouds == 'both')) && 'true' || (github.event_name != 'workflow_dispatch' && vars.ENABLE_AZURE == 'true') && 'true' || 'false' }}
+      TF_VAR_enable_aws: ${{ (github.event_name == 'workflow_dispatch' && (inputs.clouds == 'aws' || inputs.clouds == 'both' || inputs.clouds == 'all')) && 'true' || (github.event_name != 'workflow_dispatch') && 'true' || 'false' }}
+      TF_VAR_enable_azure: ${{ (github.event_name == 'workflow_dispatch' && (inputs.clouds == 'azure' || inputs.clouds == 'both' || inputs.clouds == 'all')) && 'true' || (github.event_name != 'workflow_dispatch' && vars.ENABLE_AZURE == 'true') && 'true' || 'false' }}
+      TF_VAR_enable_gcp: ${{ (github.event_name == 'workflow_dispatch' && (inputs.clouds == 'gcp' || inputs.clouds == 'all')) && 'true' || (github.event_name != 'workflow_dispatch' && vars.ENABLE_GCP == 'true') && 'true' || 'false' }}
 
     steps:
       - name: Checkout
@@ -79,10 +86,17 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+      - name: Authenticate to Google Cloud
+        if: env.TF_VAR_enable_gcp == 'true'
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
       - name: Show cloud toggles
         run: |
-          echo "enable_aws=$TF_VAR_enable_aws enable_azure=$TF_VAR_enable_azure"
+          echo "enable_aws=$TF_VAR_enable_aws enable_azure=$TF_VAR_enable_azure enable_gcp=$TF_VAR_enable_gcp"
           echo "azure_location=$TF_VAR_azure_location azure_vm_size=$TF_VAR_azure_vm_size"
+          echo "gcp_region=$TF_VAR_gcp_region gcp_zone=$TF_VAR_gcp_zone"
 
       - name: Terraform format check
         run: terraform fmt -check -recursive
@@ -135,8 +149,9 @@ jobs:
       (github.event_name == 'workflow_dispatch' && inputs.terraform_action == 'apply')
     environment: production
     env:
-      TF_VAR_enable_aws: ${{ (github.event_name == 'workflow_dispatch' && (inputs.clouds == 'aws' || inputs.clouds == 'both')) && 'true' || (github.event_name != 'workflow_dispatch') && 'true' || 'false' }}
-      TF_VAR_enable_azure: ${{ (github.event_name == 'workflow_dispatch' && (inputs.clouds == 'azure' || inputs.clouds == 'both')) && 'true' || (github.event_name != 'workflow_dispatch' && vars.ENABLE_AZURE == 'true') && 'true' || 'false' }}
+      TF_VAR_enable_aws: ${{ (github.event_name == 'workflow_dispatch' && (inputs.clouds == 'aws' || inputs.clouds == 'both' || inputs.clouds == 'all')) && 'true' || (github.event_name != 'workflow_dispatch') && 'true' || 'false' }}
+      TF_VAR_enable_azure: ${{ (github.event_name == 'workflow_dispatch' && (inputs.clouds == 'azure' || inputs.clouds == 'both' || inputs.clouds == 'all')) && 'true' || (github.event_name != 'workflow_dispatch' && vars.ENABLE_AZURE == 'true') && 'true' || 'false' }}
+      TF_VAR_enable_gcp: ${{ (github.event_name == 'workflow_dispatch' && (inputs.clouds == 'gcp' || inputs.clouds == 'all')) && 'true' || (github.event_name != 'workflow_dispatch' && vars.ENABLE_GCP == 'true') && 'true' || 'false' }}
 
     steps:
       - name: Checkout
@@ -161,6 +176,12 @@ jobs:
         uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Authenticate to Google Cloud
+        if: env.TF_VAR_enable_gcp == 'true'
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
 
       - name: Terraform init
         env:
@@ -201,8 +222,9 @@ jobs:
     if: github.event_name == 'workflow_dispatch' && inputs.terraform_action == 'destroy'
     environment: production
     env:
-      TF_VAR_enable_aws: ${{ (inputs.clouds == 'aws' || inputs.clouds == 'both') && 'true' || 'false' }}
-      TF_VAR_enable_azure: ${{ (inputs.clouds == 'azure' || inputs.clouds == 'both') && 'true' || 'false' }}
+      TF_VAR_enable_aws: ${{ (inputs.clouds == 'aws' || inputs.clouds == 'both' || inputs.clouds == 'all') && 'true' || 'false' }}
+      TF_VAR_enable_azure: ${{ (inputs.clouds == 'azure' || inputs.clouds == 'both' || inputs.clouds == 'all') && 'true' || 'false' }}
+      TF_VAR_enable_gcp: ${{ (inputs.clouds == 'gcp' || inputs.clouds == 'all') && 'true' || 'false' }}
 
     steps:
       - name: Checkout
@@ -227,6 +249,12 @@ jobs:
         uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Authenticate to Google Cloud
+        if: env.TF_VAR_enable_gcp == 'true'
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
 
       - name: Terraform init
         env:
