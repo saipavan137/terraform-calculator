@@ -12,7 +12,7 @@ enabled=0
 [ "$enable_gcp" = "true" ] && enabled=$((enabled + 1))
 
 if [ "$enable_aws" != "true" ]; then
-  rm -f providers.tf
+  rm -f providers.tf outputs.aws.tf
   sed -i '/module "aws_app"/,/^}/d' main.tf
   sed -i '/aws = {/,/}/d' main.tf
 fi
