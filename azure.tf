@@ -18,3 +18,13 @@ module "azure_app" {
   app_port       = var.app_port
   admin_password = var.azure_admin_password
 }
+
+output "azure_app_url" {
+  description = "Calculator URL on Azure (null if disabled)."
+  value       = var.enable_azure ? module.azure_app[0].app_url : null
+}
+
+output "azure_public_ip" {
+  description = "Azure VM public IP."
+  value       = var.enable_azure ? module.azure_app[0].public_ip : null
+}
