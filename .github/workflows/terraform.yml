@@ -72,6 +72,11 @@ jobs:
           if [ "$TF_VAR_enable_aws" = "true" ]; then enabled=$((enabled + 1)); fi
           if [ "$TF_VAR_enable_azure" = "true" ]; then enabled=$((enabled + 1)); fi
           if [ "$TF_VAR_enable_gcp" = "true" ]; then enabled=$((enabled + 1)); fi
+          if [ "$TF_VAR_enable_aws" != "true" ]; then
+            rm -f providers.tf
+            sed -i '/module "aws_app"/,/^}/d' main.tf
+            sed -i '/aws = {/,/}/d' main.tf
+          fi
           if [ "$TF_VAR_enable_azure" != "true" ]; then
             rm -f azure.tf
             sed -i '/azurerm = {/,/}/d' main.tf
@@ -94,7 +99,6 @@ jobs:
           terraform_wrapper: false
 
       - name: Configure AWS credentials
-        if: env.TF_VAR_enable_aws == 'true'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -114,6 +118,8 @@ jobs:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
       - name: Validate cloud secrets
+        env:
+          TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
         run: |
           missing=0
           if [ "$TF_VAR_enable_azure" = "true" ] && [ -z "$TF_VAR_azure_subscription_id" ]; then
@@ -126,6 +132,10 @@ jobs:
           fi
           if [ "$TF_VAR_enable_aws" = "true" ] && [ -z "${{ secrets.AWS_ACCESS_KEY_ID }}" ]; then
             echo "::error::AWS is enabled but AWS_ACCESS_KEY_ID secret is not set."
+            missing=1
+          fi
+          if [ -n "$TF_STATE_BUCKET" ] && [ -z "${{ secrets.AWS_ACCESS_KEY_ID }}" ]; then
+            echo "::error::TF_STATE_BUCKET is set (S3 remote state) but AWS_ACCESS_KEY_ID is missing. AWS keys are required to read/write state even for Azure-only or GCP-only runs."
             missing=1
           fi
           if [ "$missing" -ne 0 ]; then
@@ -203,6 +213,11 @@ jobs:
           if [ "$TF_VAR_enable_aws" = "true" ]; then enabled=$((enabled + 1)); fi
           if [ "$TF_VAR_enable_azure" = "true" ]; then enabled=$((enabled + 1)); fi
           if [ "$TF_VAR_enable_gcp" = "true" ]; then enabled=$((enabled + 1)); fi
+          if [ "$TF_VAR_enable_aws" != "true" ]; then
+            rm -f providers.tf
+            sed -i '/module "aws_app"/,/^}/d' main.tf
+            sed -i '/aws = {/,/}/d' main.tf
+          fi
           if [ "$TF_VAR_enable_azure" != "true" ]; then
             rm -f azure.tf
             sed -i '/azurerm = {/,/}/d' main.tf
@@ -225,7 +240,6 @@ jobs:
           terraform_wrapper: false
 
       - name: Configure AWS credentials
-        if: env.TF_VAR_enable_aws == 'true'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -297,6 +311,11 @@ jobs:
           if [ "$TF_VAR_enable_aws" = "true" ]; then enabled=$((enabled + 1)); fi
           if [ "$TF_VAR_enable_azure" = "true" ]; then enabled=$((enabled + 1)); fi
           if [ "$TF_VAR_enable_gcp" = "true" ]; then enabled=$((enabled + 1)); fi
+          if [ "$TF_VAR_enable_aws" != "true" ]; then
+            rm -f providers.tf
+            sed -i '/module "aws_app"/,/^}/d' main.tf
+            sed -i '/aws = {/,/}/d' main.tf
+          fi
           if [ "$TF_VAR_enable_azure" != "true" ]; then
             rm -f azure.tf
             sed -i '/azurerm = {/,/}/d' main.tf
@@ -319,7 +338,6 @@ jobs:
           terraform_wrapper: false
 
       - name: Configure AWS credentials
-        if: env.TF_VAR_enable_aws == 'true'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}

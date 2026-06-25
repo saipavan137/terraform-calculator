@@ -239,7 +239,7 @@ CI is defined in `.github/workflows/terraform.yml`. It runs `plan` on PRs and ca
 
 Required secrets for full multi-cloud CI:
 
-- `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`
+- `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` — **always required when `TF_STATE_BUCKET` is set** (S3 remote state lives in AWS, even for Azure-only or GCP-only deploys)
 - `AZURE_CREDENTIALS`, `AZURE_SUBSCRIPTION_ID`
 - `GCP_SA_KEY`, `GCP_PROJECT_ID`
 - `TF_STATE_BUCKET` (+ optional DynamoDB lock table)
