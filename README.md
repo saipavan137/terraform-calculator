@@ -233,18 +233,50 @@ terraform destroy -auto-approve
 
 ---
 
-## GitHub Actions (optional)
+## GitHub Actions
 
-CI is defined in `.github/workflows/terraform.yml`. It runs `plan` on PRs and can `apply` / `destroy` via workflow dispatch.
+CI is in `.github/workflows/terraform.yml`. Use **Run workflow** to pick clouds and action.
 
-Required secrets for full multi-cloud CI:
+### One button — all 3 clouds
 
-- `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` — **always required when `TF_STATE_BUCKET` is set** (S3 remote state lives in AWS, even for Azure-only or GCP-only deploys)
-- `AZURE_CREDENTIALS`, `AZURE_SUBSCRIPTION_ID`
-- `GCP_SA_KEY`, `GCP_PROJECT_ID`
-- `TF_STATE_BUCKET` (+ optional DynamoDB lock table)
+1. Go to **Actions** → **Terraform** → **Run workflow**
+2. Set **terraform_action** = `apply`
+3. Set **clouds** = **`all`**
+4. Click **Run workflow**
 
-Set repo variable `ENABLE_AZURE=true` / `ENABLE_GCP=true` to include those clouds on push to `main`.
+One `terraform apply` deploys AWS + Azure + GCP together.
+
+### Run each cloud independently
+
+| clouds | What deploys |
+|--------|----------------|
+| `aws` | AWS only |
+| `azure` | Azure only |
+| `gcp` | GCP only |
+| `all` | All three (single apply) |
+
+Pair options: `aws-azure`, `aws-gcp`, `azure-gcp`
+
+### Destroy
+
+Set **terraform_action** = `destroy` and pick the same **clouds** value (e.g. `all` to tear down everything).
+
+### Push to main (automatic)
+
+On push, **AWS only** runs by default. To change that, set repo **Variables**:
+
+| Variable | Effect |
+|----------|--------|
+| `ENABLE_ALL_CLOUDS=true` | Push deploys all three clouds |
+| `ENABLE_AZURE=true` | Push also includes Azure |
+| `ENABLE_GCP=true` | Push also includes GCP |
+
+### Required secrets
+
+- `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` — **always required when `TF_STATE_BUCKET` is set** (S3 remote state lives in AWS, even for Azure-only or GCP-only runs)
+- `AZURE_CREDENTIALS`, `AZURE_SUBSCRIPTION_ID`, `AZURE_ADMIN_PASSWORD` — when Azure is enabled
+- `GCP_SA_KEY`, `GCP_PROJECT_ID` — when GCP is enabled
+- `TF_STATE_BUCKET` (+ optional `TF_STATE_KEY`, `TF_STATE_REGION`, `TF_STATE_DYNAMODB_TABLE`)
 
 ---
 

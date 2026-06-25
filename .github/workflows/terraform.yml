@@ -8,12 +8,14 @@ on:
       - "**/*.tfvars.example"
       - "modules/**"
       - ".github/workflows/terraform.yml"
+      - ".github/scripts/**"
   pull_request:
     paths:
       - "**/*.tf"
       - "**/*.tfvars.example"
       - "modules/**"
       - ".github/workflows/terraform.yml"
+      - ".github/scripts/**"
   workflow_dispatch:
     inputs:
       terraform_action:
@@ -26,16 +28,18 @@ on:
           - apply
           - destroy
       clouds:
-        description: "Which clouds to include"
+        description: "Cloud(s) to run — pick one, a pair, or all three"
         required: true
-        default: aws
+        default: all
         type: choice
         options:
+          - all
           - aws
           - azure
           - gcp
-          - both
-          - all
+          - aws-azure
+          - aws-gcp
+          - azure-gcp
 
 permissions:
   contents: read
@@ -57,40 +61,35 @@ jobs:
   plan:
     name: Plan
     runs-on: ubuntu-latest
-    env:
-      TF_VAR_enable_aws: ${{ (github.event_name == 'workflow_dispatch' && (inputs.clouds == 'aws' || inputs.clouds == 'both' || inputs.clouds == 'all')) && 'true' || (github.event_name != 'workflow_dispatch') && 'true' || 'false' }}
-      TF_VAR_enable_azure: ${{ (github.event_name == 'workflow_dispatch' && (inputs.clouds == 'azure' || inputs.clouds == 'both' || inputs.clouds == 'all')) && 'true' || (github.event_name != 'workflow_dispatch' && vars.ENABLE_AZURE == 'true') && 'true' || 'false' }}
-      TF_VAR_enable_gcp: ${{ (github.event_name == 'workflow_dispatch' && (inputs.clouds == 'gcp' || inputs.clouds == 'all')) && 'true' || (github.event_name != 'workflow_dispatch' && vars.ENABLE_GCP == 'true') && 'true' || 'false' }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Select active cloud configs
+      - name: Set cloud toggles
+        id: clouds
+        env:
+          ENABLE_ALL_CLOUDS: ${{ vars.ENABLE_ALL_CLOUDS }}
+          ENABLE_AZURE: ${{ vars.ENABLE_AZURE }}
+          ENABLE_GCP: ${{ vars.ENABLE_GCP }}
         run: |
-          enabled=0
-          if [ "$TF_VAR_enable_aws" = "true" ]; then enabled=$((enabled + 1)); fi
-          if [ "$TF_VAR_enable_azure" = "true" ]; then enabled=$((enabled + 1)); fi
-          if [ "$TF_VAR_enable_gcp" = "true" ]; then enabled=$((enabled + 1)); fi
-          if [ "$TF_VAR_enable_aws" != "true" ]; then
-            rm -f providers.tf
-            sed -i '/module "aws_app"/,/^}/d' main.tf
-            sed -i '/aws = {/,/}/d' main.tf
-          fi
-          if [ "$TF_VAR_enable_azure" != "true" ]; then
-            rm -f azure.tf
-            sed -i '/azurerm = {/,/}/d' main.tf
-          fi
-          if [ "$TF_VAR_enable_gcp" != "true" ]; then
-            rm -f gcp.tf
-            sed -i '/google = {/,/}/d' main.tf
-          fi
-          if [ "$enabled" -lt 2 ]; then
-            rm -f outputs.urls.tf
-          fi
-          echo "Active .tf files:" && ls -1 *.tf
-          echo "--- main.tf required_providers ---"
-          sed -n '1,20p' main.tf
+          chmod +x .github/scripts/cloud-toggles.sh .github/scripts/select-cloud-configs.sh
+          mapfile -t lines < <(.github/scripts/cloud-toggles.sh \
+            "${{ github.event_name }}" \
+            "${{ inputs.clouds || 'aws' }}" \
+            "$ENABLE_ALL_CLOUDS" \
+            "$ENABLE_AZURE" \
+            "$ENABLE_GCP")
+          for line in "${lines[@]}"; do
+            if [[ "$line" == TF_VAR_* ]]; then
+              echo "$line" >> "$GITHUB_ENV"
+            elif [[ "$line" == enable_* ]]; then
+              echo "$line" >> "$GITHUB_OUTPUT"
+            fi
+          done
+
+      - name: Select active cloud configs
+        run: .github/scripts/select-cloud-configs.sh
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -144,9 +143,8 @@ jobs:
 
       - name: Show cloud toggles
         run: |
+          echo "clouds_input=${{ inputs.clouds || 'push-default' }}"
           echo "enable_aws=$TF_VAR_enable_aws enable_azure=$TF_VAR_enable_azure enable_gcp=$TF_VAR_enable_gcp"
-          echo "azure_location=$TF_VAR_azure_location azure_vm_size=$TF_VAR_azure_vm_size"
-          echo "gcp_region=$TF_VAR_gcp_region gcp_zone=$TF_VAR_gcp_zone"
 
       - name: Terraform format check
         run: terraform fmt -check -recursive
@@ -186,7 +184,7 @@ jobs:
       - name: Upload plan
         uses: actions/upload-artifact@v4
         with:
-          name: tfplan-${{ github.sha }}
+          name: tfplan-${{ github.sha }}-${{ steps.clouds.outputs.enable_aws }}-${{ steps.clouds.outputs.enable_azure }}-${{ steps.clouds.outputs.enable_gcp }}
           path: tfplan
           retention-days: 7
 
@@ -198,40 +196,35 @@ jobs:
       (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
       (github.event_name == 'workflow_dispatch' && inputs.terraform_action == 'apply')
     environment: production
-    env:
-      TF_VAR_enable_aws: ${{ (github.event_name == 'workflow_dispatch' && (inputs.clouds == 'aws' || inputs.clouds == 'both' || inputs.clouds == 'all')) && 'true' || (github.event_name != 'workflow_dispatch') && 'true' || 'false' }}
-      TF_VAR_enable_azure: ${{ (github.event_name == 'workflow_dispatch' && (inputs.clouds == 'azure' || inputs.clouds == 'both' || inputs.clouds == 'all')) && 'true' || (github.event_name != 'workflow_dispatch' && vars.ENABLE_AZURE == 'true') && 'true' || 'false' }}
-      TF_VAR_enable_gcp: ${{ (github.event_name == 'workflow_dispatch' && (inputs.clouds == 'gcp' || inputs.clouds == 'all')) && 'true' || (github.event_name != 'workflow_dispatch' && vars.ENABLE_GCP == 'true') && 'true' || 'false' }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Select active cloud configs
+      - name: Set cloud toggles
+        id: clouds
+        env:
+          ENABLE_ALL_CLOUDS: ${{ vars.ENABLE_ALL_CLOUDS }}
+          ENABLE_AZURE: ${{ vars.ENABLE_AZURE }}
+          ENABLE_GCP: ${{ vars.ENABLE_GCP }}
         run: |
-          enabled=0
-          if [ "$TF_VAR_enable_aws" = "true" ]; then enabled=$((enabled + 1)); fi
-          if [ "$TF_VAR_enable_azure" = "true" ]; then enabled=$((enabled + 1)); fi
-          if [ "$TF_VAR_enable_gcp" = "true" ]; then enabled=$((enabled + 1)); fi
-          if [ "$TF_VAR_enable_aws" != "true" ]; then
-            rm -f providers.tf
-            sed -i '/module "aws_app"/,/^}/d' main.tf
-            sed -i '/aws = {/,/}/d' main.tf
-          fi
-          if [ "$TF_VAR_enable_azure" != "true" ]; then
-            rm -f azure.tf
-            sed -i '/azurerm = {/,/}/d' main.tf
-          fi
-          if [ "$TF_VAR_enable_gcp" != "true" ]; then
-            rm -f gcp.tf
-            sed -i '/google = {/,/}/d' main.tf
-          fi
-          if [ "$enabled" -lt 2 ]; then
-            rm -f outputs.urls.tf
-          fi
-          echo "Active .tf files:" && ls -1 *.tf
-          echo "--- main.tf required_providers ---"
-          sed -n '1,20p' main.tf
+          chmod +x .github/scripts/cloud-toggles.sh .github/scripts/select-cloud-configs.sh
+          mapfile -t lines < <(.github/scripts/cloud-toggles.sh \
+            "${{ github.event_name }}" \
+            "${{ inputs.clouds || 'aws' }}" \
+            "$ENABLE_ALL_CLOUDS" \
+            "$ENABLE_AZURE" \
+            "$ENABLE_GCP")
+          for line in "${lines[@]}"; do
+            if [[ "$line" == TF_VAR_* ]]; then
+              echo "$line" >> "$GITHUB_ENV"
+            elif [[ "$line" == enable_* ]]; then
+              echo "$line" >> "$GITHUB_OUTPUT"
+            fi
+          done
+
+      - name: Select active cloud configs
+        run: .github/scripts/select-cloud-configs.sh
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -281,7 +274,7 @@ jobs:
       - name: Download plan
         uses: actions/download-artifact@v4
         with:
-          name: tfplan-${{ github.sha }}
+          name: tfplan-${{ github.sha }}-${{ steps.clouds.outputs.enable_aws }}-${{ steps.clouds.outputs.enable_azure }}-${{ steps.clouds.outputs.enable_gcp }}
           path: .
 
       - name: Terraform apply
@@ -296,40 +289,29 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch' && inputs.terraform_action == 'destroy'
     environment: production
-    env:
-      TF_VAR_enable_aws: ${{ (inputs.clouds == 'aws' || inputs.clouds == 'both' || inputs.clouds == 'all') && 'true' || 'false' }}
-      TF_VAR_enable_azure: ${{ (inputs.clouds == 'azure' || inputs.clouds == 'both' || inputs.clouds == 'all') && 'true' || 'false' }}
-      TF_VAR_enable_gcp: ${{ (inputs.clouds == 'gcp' || inputs.clouds == 'all') && 'true' || 'false' }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Select active cloud configs
+      - name: Set cloud toggles
+        id: clouds
         run: |
-          enabled=0
-          if [ "$TF_VAR_enable_aws" = "true" ]; then enabled=$((enabled + 1)); fi
-          if [ "$TF_VAR_enable_azure" = "true" ]; then enabled=$((enabled + 1)); fi
-          if [ "$TF_VAR_enable_gcp" = "true" ]; then enabled=$((enabled + 1)); fi
-          if [ "$TF_VAR_enable_aws" != "true" ]; then
-            rm -f providers.tf
-            sed -i '/module "aws_app"/,/^}/d' main.tf
-            sed -i '/aws = {/,/}/d' main.tf
-          fi
-          if [ "$TF_VAR_enable_azure" != "true" ]; then
-            rm -f azure.tf
-            sed -i '/azurerm = {/,/}/d' main.tf
-          fi
-          if [ "$TF_VAR_enable_gcp" != "true" ]; then
-            rm -f gcp.tf
-            sed -i '/google = {/,/}/d' main.tf
-          fi
-          if [ "$enabled" -lt 2 ]; then
-            rm -f outputs.urls.tf
-          fi
-          echo "Active .tf files:" && ls -1 *.tf
-          echo "--- main.tf required_providers ---"
-          sed -n '1,20p' main.tf
+          chmod +x .github/scripts/cloud-toggles.sh .github/scripts/select-cloud-configs.sh
+          mapfile -t lines < <(.github/scripts/cloud-toggles.sh \
+            "workflow_dispatch" \
+            "${{ inputs.clouds }}" \
+            "false" "false" "false")
+          for line in "${lines[@]}"; do
+            if [[ "$line" == TF_VAR_* ]]; then
+              echo "$line" >> "$GITHUB_ENV"
+            elif [[ "$line" == enable_* ]]; then
+              echo "$line" >> "$GITHUB_OUTPUT"
+            fi
+          done
+
+      - name: Select active cloud configs
+        run: .github/scripts/select-cloud-configs.sh
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -379,7 +361,7 @@ jobs:
       - name: Download destroy plan
         uses: actions/download-artifact@v4
         with:
-          name: tfplan-${{ github.sha }}
+          name: tfplan-${{ github.sha }}-${{ steps.clouds.outputs.enable_aws }}-${{ steps.clouds.outputs.enable_azure }}-${{ steps.clouds.outputs.enable_gcp }}
           path: .
 
       - name: Terraform destroy
