@@ -73,7 +73,7 @@ jobs:
           ENABLE_AZURE: ${{ vars.ENABLE_AZURE }}
           ENABLE_GCP: ${{ vars.ENABLE_GCP }}
         run: |
-          chmod +x .github/scripts/cloud-toggles.sh .github/scripts/select-cloud-configs.sh
+          chmod +x .github/scripts/cloud-toggles.sh .github/scripts/select-cloud-configs.sh .github/scripts/validate-cloud-secrets.sh
           mapfile -t lines < <(.github/scripts/cloud-toggles.sh \
             "${{ github.event_name }}" \
             "${{ inputs.clouds || 'aws' }}" \
@@ -90,6 +90,14 @@ jobs:
 
       - name: Select active cloud configs
         run: .github/scripts/select-cloud-configs.sh
+
+      - name: Validate cloud secrets
+        env:
+          TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
+          GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+        run: .github/scripts/validate-cloud-secrets.sh
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -112,34 +120,9 @@ jobs:
 
       - name: Authenticate to Google Cloud
         if: env.TF_VAR_enable_gcp == 'true'
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@v3
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
-
-      - name: Validate cloud secrets
-        env:
-          TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
-        run: |
-          missing=0
-          if [ "$TF_VAR_enable_azure" = "true" ] && [ -z "$TF_VAR_azure_subscription_id" ]; then
-            echo "::error::Azure is enabled but AZURE_SUBSCRIPTION_ID secret is not set."
-            missing=1
-          fi
-          if [ "$TF_VAR_enable_gcp" = "true" ] && [ -z "$TF_VAR_gcp_project_id" ]; then
-            echo "::error::GCP is enabled but GCP_PROJECT_ID secret is not set."
-            missing=1
-          fi
-          if [ "$TF_VAR_enable_aws" = "true" ] && [ -z "${{ secrets.AWS_ACCESS_KEY_ID }}" ]; then
-            echo "::error::AWS is enabled but AWS_ACCESS_KEY_ID secret is not set."
-            missing=1
-          fi
-          if [ -n "$TF_STATE_BUCKET" ] && [ -z "${{ secrets.AWS_ACCESS_KEY_ID }}" ]; then
-            echo "::error::TF_STATE_BUCKET is set (S3 remote state) but AWS_ACCESS_KEY_ID is missing. AWS keys are required to read/write state even for Azure-only or GCP-only runs."
-            missing=1
-          fi
-          if [ "$missing" -ne 0 ]; then
-            exit 1
-          fi
 
       - name: Show cloud toggles
         run: |
@@ -208,7 +191,7 @@ jobs:
           ENABLE_AZURE: ${{ vars.ENABLE_AZURE }}
           ENABLE_GCP: ${{ vars.ENABLE_GCP }}
         run: |
-          chmod +x .github/scripts/cloud-toggles.sh .github/scripts/select-cloud-configs.sh
+          chmod +x .github/scripts/cloud-toggles.sh .github/scripts/select-cloud-configs.sh .github/scripts/validate-cloud-secrets.sh
           mapfile -t lines < <(.github/scripts/cloud-toggles.sh \
             "${{ github.event_name }}" \
             "${{ inputs.clouds || 'aws' }}" \
@@ -225,6 +208,14 @@ jobs:
 
       - name: Select active cloud configs
         run: .github/scripts/select-cloud-configs.sh
+
+      - name: Validate cloud secrets
+        env:
+          TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
+          GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+        run: .github/scripts/validate-cloud-secrets.sh
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -247,7 +238,7 @@ jobs:
 
       - name: Authenticate to Google Cloud
         if: env.TF_VAR_enable_gcp == 'true'
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@v3
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
@@ -297,7 +288,7 @@ jobs:
       - name: Set cloud toggles
         id: clouds
         run: |
-          chmod +x .github/scripts/cloud-toggles.sh .github/scripts/select-cloud-configs.sh
+          chmod +x .github/scripts/cloud-toggles.sh .github/scripts/select-cloud-configs.sh .github/scripts/validate-cloud-secrets.sh
           mapfile -t lines < <(.github/scripts/cloud-toggles.sh \
             "workflow_dispatch" \
             "${{ inputs.clouds }}" \
@@ -312,6 +303,14 @@ jobs:
 
       - name: Select active cloud configs
         run: .github/scripts/select-cloud-configs.sh
+
+      - name: Validate cloud secrets
+        env:
+          TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
+          GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+        run: .github/scripts/validate-cloud-secrets.sh
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -334,7 +333,7 @@ jobs:
 
       - name: Authenticate to Google Cloud
         if: env.TF_VAR_enable_gcp == 'true'
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@v3
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
